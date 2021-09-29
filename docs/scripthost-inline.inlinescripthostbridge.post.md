@@ -7,14 +7,14 @@
 <b>Signature:</b>
 
 ```typescript
-post(message: EvaluateScriptRequest): void;
+post(message: ScriptHostInputMessage): void;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  message | EvaluateScriptRequest |  |
+|  message | ScriptHostInputMessage |  |
 
 <b>Returns:</b>
 

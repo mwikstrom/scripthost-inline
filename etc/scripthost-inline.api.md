@@ -4,18 +4,18 @@
 
 ```ts
 
-import { EvaluateScriptRequest } from 'scripthost';
-import { EvaluateScriptResponse } from 'scripthost';
 import { ScriptHostBridge } from 'scripthost';
+import { ScriptHostInputMessage } from 'scripthost';
+import { ScriptHostOutputMessage } from 'scripthost';
 
 // @public
 export class InlineScriptHostBridge implements ScriptHostBridge {
     // (undocumented)
     dispose(): void;
     // (undocumented)
-    listen(handler: (message: EvaluateScriptResponse) => void): () => void;
+    listen(handler: (message: ScriptHostOutputMessage) => void): () => void;
     // (undocumented)
-    post(message: EvaluateScriptRequest): void;
+    post(message: ScriptHostInputMessage): void;
 }
 
 ```

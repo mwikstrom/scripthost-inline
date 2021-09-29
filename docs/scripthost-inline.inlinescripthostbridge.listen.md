@@ -7,14 +7,14 @@
 <b>Signature:</b>
 
 ```typescript
-listen(handler: (message: EvaluateScriptResponse) => void): () => void;
+listen(handler: (message: ScriptHostOutputMessage) => void): () => void;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  handler | (message: EvaluateScriptResponse) =&gt; void |  |
+|  handler | (message: ScriptHostOutputMessage) =&gt; void |  |
 
 <b>Returns:</b>
 
