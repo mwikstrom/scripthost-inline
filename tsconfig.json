@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json.schemastore.org/tsconfig",
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "strict": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node",
+        "skipLibCheck": true,
+        "experimentalDecorators": true,
+        "forceConsistentCasingInFileNames": true,
+        "declaration": true,
+        "declarationDir": "temp",
+        "outDir": "lib"
+    },
+    "include": [
+        "src/**/*.ts",
+        "test/**/*.ts"
+    ]
+}
