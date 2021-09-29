@@ -14,13 +14,14 @@ describe("InlineScriptHostBridge", () => {
         const stopListening = bridge.listen(message => output.push(message));
         bridge.post({
             type: "eval",
-            script: "'foobar'.length * 2",
             correlationId: "dummy-123",
+            script: "'foobar'.length * 2",
         });
         await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
         expect(output.length).toBe(1);
         expect(output[0]).toMatchObject({
             type: "result",
+            correlationId: "dummy-123",
             result: 12,
         });
         stopListening();
