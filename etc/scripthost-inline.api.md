@@ -4,8 +4,8 @@
 
 ```ts
 
-import { ScriptSandbox } from 'scripthost';
-import { ScriptValue } from 'scripthost';
+import { ScriptSandbox } from 'scripthost-core';
+import { ScriptValue } from 'scripthost-core';
 
 // @public
 export class InlineScriptSandbox implements ScriptSandbox {

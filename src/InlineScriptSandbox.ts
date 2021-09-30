@@ -18,7 +18,7 @@ import {
     ScriptSandbox, 
     ScriptValue,
     TrackedVariable
-} from "scripthost";
+} from "scripthost-core";
 import { RootProxy } from "./internal/RootProxy";
 import { createGlobalProxy, ScriptGlobals } from "./internal/ScriptGlobals";
 import { createThisProxy, ScriptThisArg } from "./internal/ScriptThisArg";
