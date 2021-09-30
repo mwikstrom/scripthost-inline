@@ -48,7 +48,6 @@ export interface ScriptGlobals extends Record<string | symbol, unknown> {
     WeakMap: typeof WeakMap;
     WeakSet: typeof WeakSet;
     ArrayBuffer: typeof ArrayBuffer;
-    SharedArrayBuffer: typeof SharedArrayBuffer;
     DataView: typeof DataView;
     JSON: typeof JSON;
     Promise: typeof Promise;
@@ -177,7 +176,6 @@ const FIXED: Readonly<ScriptGlobals> = Object.freeze({
     WeakMap,
     WeakSet,
     ArrayBuffer,
-    SharedArrayBuffer,
     DataView,
     JSON,
     Promise,
