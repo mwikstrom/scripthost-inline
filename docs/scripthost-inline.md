@@ -10,5 +10,5 @@ Sandboxed and observable Javascript host that runs inside the default VM
 
 |  Class | Description |
 |  --- | --- |
-|  [InlineScriptHostBridge](./scripthost-inline.inlinescripthostbridge.md) | A script host brigde that runs code inside the current VM |
+|  [InlineScriptSandbox](./scripthost-inline.inlinescriptsandbox.md) | A script sandbox that runs code inside the current VM |
 
