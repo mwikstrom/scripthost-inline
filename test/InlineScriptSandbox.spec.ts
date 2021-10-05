@@ -2,8 +2,11 @@ import {
     EvaluateScriptRequest,
     GenericMessage, 
     GenericResponse, 
+    InitializeRequest, 
     isErrorResponse, 
     isEvaluateScriptResponse, 
+    isGenericResponse, 
+    isInitializeResponse, 
     ScriptSandbox, 
     ScriptValue,
     TrackedVariable, 
@@ -14,6 +17,22 @@ describe("InlineScriptSandbox", () => {
     it("can be constructed without args", () => {
         const sandbox = new InlineScriptSandbox();
         expect(sandbox).toBeInstanceOf(InlineScriptSandbox);
+        sandbox.dispose();
+    });
+
+    it("can be initialized", async () => {
+        const sandbox = new InlineScriptSandbox();
+        const request: InitializeRequest = {
+            type: "init",
+            messageId: "msg-123",
+            funcs: new Set(["dummy1", "dummy2"]),
+        };
+        const response = await getResponse(sandbox, request, isInitializeResponse);
+        expect(response).toMatchObject({
+            type: "ready",
+            messageId: "sandbox-1",
+            inResponseTo: "msg-123",
+        });
         sandbox.dispose();
     });
 
@@ -193,6 +212,10 @@ const getResponse = <T extends GenericResponse>(
             clearTimeout(timeout);
         } else if (isErrorResponse(output) && output.inResponseTo === input.messageId) {
             reject(new Error(output.message));
+            stopListening();
+            clearTimeout(timeout);
+        } else if (isGenericResponse(output) && output.inResponseTo === input.messageId) {
+            reject(new Error(`Received unexpected response: ${output.type}`));
             stopListening();
             clearTimeout(timeout);
         }
