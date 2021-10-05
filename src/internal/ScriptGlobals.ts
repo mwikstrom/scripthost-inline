@@ -64,13 +64,10 @@ export function createGlobalProxy(
 ): RootProxy<ScriptGlobals> {
     const keys = () => [...Object.keys(FIXED), ...globalVars.keys(), ...funcs.keys()];
     const has = (key: string | symbol): boolean => {
-        if (typeof key === "string") {            
-            if (funcs.has(key) || key in FIXED) {
-                return true;
-            }
+        if (typeof key === "string" && !(key in FIXED) && !funcs.has(key)) {
             onRead(key);
         }
-        return globalVars.has(key);
+        return true;
     };
     const read = (key: string | symbol): unknown => {
         if (typeof key === "string") {
