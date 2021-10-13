@@ -275,12 +275,12 @@ export class InlineScriptSandbox implements ScriptSandbox {
     }
 
     #compileScript(script: string): (this: ScriptThisArg, globals: ScriptGlobals) => Promise<ScriptValue> {
-        const wrapped = `"use strict"; return ${script};`;
-        this.#checkSyntax(wrapped);
+        const wrapped = `async () => ${script}`;
+        this.#checkSyntax(`"use strict";${wrapped}`);
         const sandboxed = `
         with (globals) { 
             return (async function () { 
-                ${wrapped}
+                return (${wrapped})();
             }).call(this);
         }`;
         const compiled = new Function("globals", sandboxed);

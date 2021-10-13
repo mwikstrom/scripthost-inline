@@ -177,6 +177,36 @@ describe("InlineScriptSandbox", () => {
             "Idempotent script cannot assign global variable 'value'"
         );
     });
+
+    it("can evaluate script block", async () => {
+        const sandbox = new InlineScriptSandbox();
+        const result = await evalScript(sandbox, "{ return 123; }");
+        expect(result).toBe(123);
+    });
+
+    it("can delay expression", async () => {
+        const sandbox = new InlineScriptSandbox();
+        const result = await evalScript(sandbox, "await delay(100) || 123");
+        expect(result).toBe(123);
+    });
+
+    it("can delay script block", async () => {
+        const sandbox = new InlineScriptSandbox();
+        const result = await evalScript(sandbox, "{ await delay(100); return 123; }");
+        expect(result).toBe(123);
+    });
+
+    it("cannot evaluate naked block", async () => {
+        const sandbox = new InlineScriptSandbox();
+        await expect(async () => await evalScript(sandbox, "await delay(100); return 123;"))
+            .rejects.toThrow("Unexpected token ';'");
+    });
+
+    it("cannot end block", async () => {
+        const sandbox = new InlineScriptSandbox();
+        await expect(async () => await evalScript(sandbox, "{}}"))
+            .rejects.toThrow("Unexpected token '}'");
+    });
 });
 
 let requestCounter = 0;
