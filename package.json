@@ -51,7 +51,7 @@
     "jest": "^27.0.6",
     "rimraf": "^3.0.2",
     "rollup": "^2.56.3",
-    "scripthost-core": "^0.2.4",
+    "scripthost-core": "^0.2.5",
     "ts-jest": "^27.0.4",
     "ts-node": "^10.1.0",
     "tslib": "^2.3.0",
