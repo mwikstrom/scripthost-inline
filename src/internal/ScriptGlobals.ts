@@ -1,3 +1,4 @@
+import { ScriptValue } from "scripthost-core";
 import { createRootProxy, RootProxy } from "./RootProxy";
 import { getTransparentProxy } from "./TransparentProxy";
 
@@ -61,10 +62,11 @@ export function createGlobalProxy(
     globalVars: Map<string | symbol, unknown>,
     onRead: (key: string) => void,
     onWrite: (key: string) => void,
+    localVars: Record<string, ScriptValue> = {}
 ): RootProxy<ScriptGlobals> {
-    const keys = () => [...Object.keys(FIXED), ...globalVars.keys(), ...funcs.keys()];
+    const keys = () => [...Object.keys(FIXED), ...Object.keys(localVars), ...globalVars.keys(), ...funcs.keys()];
     const has = (key: string | symbol): boolean => {
-        if (typeof key === "string" && !(key in FIXED) && !funcs.has(key)) {
+        if (typeof key === "string" && !(key in FIXED) && !(key in localVars) && !funcs.has(key)) {
             onRead(key);
         }
         return true;
@@ -73,6 +75,9 @@ export function createGlobalProxy(
         if (typeof key === "string") {
             if (key in FIXED) {
                 return getTransparentProxy(FIXED[key], root.proxy);
+            }
+            if (key in localVars) {
+                return getTransparentProxy(localVars[key], root.proxy);
             }
             if (funcs.has(key)) {
                 return getTransparentProxy(funcs.get(key), root.proxy);
@@ -84,6 +89,9 @@ export function createGlobalProxy(
     const write = (key: string | symbol, value: unknown): boolean => {
         if (key in FIXED) {
             throw new Error(`Cannot assign fixed global variable '${String(key)}'`);
+        }
+        if (key in localVars) {
+            throw new Error(`Cannot assign local variable '${String(key)}'`);
         }
         if (typeof key === "string" && funcs.has(key)) {
             throw new Error(`Cannot replace host function '${String(key)}'`);
@@ -100,6 +108,9 @@ export function createGlobalProxy(
     const unset = (key: string | symbol): boolean => {
         if (key in FIXED) {
             throw new Error(`Cannot delete fixed global variable '${String(key)}'`);
+        }
+        if (key in localVars) {
+            throw new Error(`Cannot delete local variable '${String(key)}'`);
         }
         if (typeof key === "string" && funcs.has(key)) {
             throw new Error(`Cannot delete host function '${String(key)}'`);

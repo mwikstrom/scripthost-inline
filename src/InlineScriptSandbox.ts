@@ -166,17 +166,17 @@ export class InlineScriptSandbox implements ScriptSandbox {
     }
 
     async #handleEvalRequest(request: EvaluateScriptRequest): Promise<void> {
-        const { script, messageId, instanceId, idempotent, track } = request;
+        const { script, messageId, instanceId, idempotent, track, vars } = request;
 
         try {
-            const vars = track ? new Map<string, TrackedVariable>() : undefined;
-            const result = await this.#runScript(script, messageId, instanceId, idempotent, vars);
+            const tracked = track ? new Map<string, TrackedVariable>() : undefined;
+            const result = await this.#runScript(script, messageId, instanceId, idempotent, tracked, vars);
             const response: EvaluateScriptResponse = {
                 type: "result",
                 messageId: this.#nextMessageId(),
                 inResponseTo: messageId,
                 result,
-                vars,
+                vars: tracked,
             };
             this.#notify(response);
         } catch (err) {
@@ -205,10 +205,17 @@ export class InlineScriptSandbox implements ScriptSandbox {
         invocationId: string,
         instanceId: string | null = null,
         idempotent = false,
-        vars = new Map<string, TrackedVariable>(),
+        tracked = new Map<string, TrackedVariable>(),
+        vars?: Record<string, ScriptValue>,
     ): Promise<ScriptValue> {
-        const { proxy: globals, revoke: revokeGlobals } = this.#createGlobalProxy(idempotent, invocationId, vars);
-        const { proxy: thisArg, revoke: revokeThis } = this.#createThisProxy(idempotent, instanceId);
+        const { 
+            proxy: globals,
+            revoke: revokeGlobals ,
+        } = this.#createGlobalProxy(idempotent, invocationId, tracked, vars);
+        const { 
+            proxy: thisArg, 
+            revoke: revokeThis
+        } = this.#createThisProxy(idempotent, instanceId);
         const revoke = () => {
             revokeThis();
             revokeGlobals();
@@ -229,18 +236,19 @@ export class InlineScriptSandbox implements ScriptSandbox {
     #createGlobalProxy(
         idempotent: boolean,
         invocationId: string,
-        vars: Map<string, TrackedVariable>
+        tracked: Map<string, TrackedVariable>,
+        local?: Record<string, ScriptValue>,
     ): RootProxy<ScriptGlobals> {
         const funcs = new Map<string, (args: unknown[]) => unknown>();
         const onRead = (key: string): void => {
-            const tracked = vars.get(key) || {};
-            const { read = 0, ...rest } = tracked;
-            vars.set(key, { read: Math.max(read, this.#globalVersion), ...rest });
+            const variable = tracked.get(key) || {};
+            const { read = 0, ...rest } = variable;
+            tracked.set(key, { read: Math.max(read, this.#globalVersion), ...rest });
         };
         const onWrite = (key: string): void => {
-            const tracked = vars.get(key) || {};
+            const variable = tracked.get(key) || {};
             const write = ++this.#globalVersion;
-            vars.set(key, { ...tracked, write });
+            tracked.set(key, { ...variable, write });
         };
         if (this.#funcs) {
             for (const key of this.#funcs) {
@@ -250,7 +258,7 @@ export class InlineScriptSandbox implements ScriptSandbox {
                 funcs.set(key, call);
             }
         }
-        return createGlobalProxy(idempotent, funcs, this.#globalVars, onRead, onWrite);
+        return createGlobalProxy(idempotent, funcs, this.#globalVars, onRead, onWrite, local);
     }
 
     #createThisProxy(
