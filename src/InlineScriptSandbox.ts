@@ -170,12 +170,11 @@ export class InlineScriptSandbox implements ScriptSandbox {
 
         try {
             const tracked = track ? new Map<string, TrackedVariable>() : undefined;
-            const result = await this.#runScript(script, messageId, instanceId, idempotent, tracked, vars);
             const response: EvaluateScriptResponse = {
+                ...await this.#runScript(script, messageId, instanceId, idempotent, tracked, vars),
                 type: "result",
                 messageId: this.#nextMessageId(),
                 inResponseTo: messageId,
-                result,
                 vars: tracked,
             };
             this.#notify(response);
@@ -207,15 +206,16 @@ export class InlineScriptSandbox implements ScriptSandbox {
         idempotent = false,
         tracked = new Map<string, TrackedVariable>(),
         vars?: Record<string, ScriptValue>,
-    ): Promise<ScriptValue> {
+    ): Promise<Pick<EvaluateScriptResponse, "result" | "refresh">> {
         const { 
             proxy: globals,
             revoke: revokeGlobals ,
         } = this.#createGlobalProxy(idempotent, invocationId, tracked, vars);
+        const instanceVars = this.#getInstanceVars(instanceId);
         const { 
             proxy: thisArg, 
             revoke: revokeThis
-        } = this.#createThisProxy(idempotent, instanceId);
+        } = createThisProxy(idempotent, instanceVars);
         const revoke = () => {
             revokeThis();
             revokeGlobals();
@@ -226,7 +226,13 @@ export class InlineScriptSandbox implements ScriptSandbox {
                 throw new Error(`Invocation ID '${invocationId}' is already active'`);
             }
             this.#activeInvocations.set(invocationId, revoke);
-            return await compiled.call(thisArg, globals);
+            const result = await compiled.call(thisArg, globals);
+            const refresh = instanceVars.get("refresh");
+            if (typeof refresh === "number" && refresh > 0) {
+                return { result, refresh };
+            } else {
+                return { result};
+            }
         } finally {
             revoke();
             this.#activeInvocations.delete(invocationId);
@@ -259,14 +265,6 @@ export class InlineScriptSandbox implements ScriptSandbox {
             }
         }
         return createGlobalProxy(idempotent, funcs, this.#globalVars, onRead, onWrite, local);
-    }
-
-    #createThisProxy(
-        idempotent: boolean,
-        instanceId: string | null,
-    ): RootProxy<ScriptThisArg> {
-        const instanceVars = this.#getInstanceVars(instanceId);
-        return createThisProxy(idempotent, instanceVars);
     }
 
     #getInstanceVars(instanceId: string | null): Map<string | symbol, unknown> {

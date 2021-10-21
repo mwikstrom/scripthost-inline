@@ -1,5 +1,6 @@
 import { 
     EvaluateScriptRequest,
+    EvaluateScriptResponse,
     GenericMessage, 
     GenericResponse, 
     InitializeRequest, 
@@ -207,22 +208,37 @@ describe("InlineScriptSandbox", () => {
         await expect(async () => await evalScript(sandbox, "{}}"))
             .rejects.toThrow("Unexpected token '}'");
     });
+
+    it("can set refresh variable", async () => {
+        const sandbox = new InlineScriptSandbox();
+        const { result, refresh } = await evalScriptResponse(sandbox, "{ this.refresh = 123; return 456; }");
+        expect(result).toBe(456);
+        expect(refresh).toBe(123);
+    });
 });
 
 let requestCounter = 0;
 
-const evalScript = async (
+const evalScriptResponse = async (
     sandbox: ScriptSandbox,
     script: string,
     options: Pick<EvaluateScriptRequest, "idempotent" | "instanceId"> = {},
-): Promise<ScriptValue> => {
+): Promise<EvaluateScriptResponse> => {
     const request: EvaluateScriptRequest = {
         ...options,
         type: "eval",
         messageId: `test-${++requestCounter}`,
         script,
     };
-    const { result } = await getResponse(sandbox, request, isEvaluateScriptResponse);
+    return await getResponse(sandbox, request, isEvaluateScriptResponse);
+};
+
+const evalScript = async (
+    sandbox: ScriptSandbox,
+    script: string,
+    options: Pick<EvaluateScriptRequest, "idempotent" | "instanceId"> = {},
+): Promise<ScriptValue> => {
+    const { result } = await evalScriptResponse(sandbox, script, options);
     return result;
 };
 
