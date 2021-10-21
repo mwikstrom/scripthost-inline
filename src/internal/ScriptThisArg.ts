@@ -17,7 +17,7 @@ export function createThisProxy(
     const write = (key: string | symbol, value: unknown): boolean => {
         if (key in fixedVars) {
             throw new Error(`Instance variable '${String(key)}' cannot be assigned`);
-        } else if (idempotent) {
+        } else if (idempotent && key !== "refresh") {
             throw new Error(`Idempotent script cannot assign instance variable '${String(key)}'`);
         } else {
             instanceVars.set(key, value);
@@ -27,7 +27,7 @@ export function createThisProxy(
     const unset = (key: string | symbol): boolean => {
         if (key in fixedVars) {
             throw new Error(`Instance variable '${String(key)}' cannot be deleted`);
-        } else if (idempotent) {
+        } else if (idempotent && key !== "refresh") {
             throw new Error(`Idempotent script cannot delete instance variable '${String(key)}'`);
         } else {
             instanceVars.delete(key);
