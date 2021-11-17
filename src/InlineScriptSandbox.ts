@@ -258,7 +258,7 @@ export class InlineScriptSandbox implements ScriptSandbox {
         };
         if (this.#funcs) {
             for (const key of this.#funcs) {
-                const call = (args: unknown[]): unknown => {
+                const call = (...args: unknown[]): unknown => {
                     return this.#call(key, idempotent, invocationId, args as ScriptValue[]);
                 };
                 funcs.set(key, call);
