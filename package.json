@@ -1,6 +1,6 @@
 {
   "name": "scripthost-inline",
-  "version": "0.2.7",
+  "version": "0.3.0",
   "description": "Sandboxed and observable Javascript host that runs inside the default VM",
   "main": "./dist/scripthost-inline.js",
   "typings": "./dist/scripthost-inline.d.ts",
