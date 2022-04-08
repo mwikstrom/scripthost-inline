@@ -14,10 +14,12 @@ import {
     isGenericResponse,
     isInitializeRequest,
     isPingRequest,
+    isYieldResponse,
     PingResponse,
     ScriptSandbox, 
     ScriptValue,
-    TrackedVariable
+    TrackedVariable,
+    YieldRequest
 } from "scripthost-core";
 import { RootProxy } from "./internal/RootProxy";
 import { createGlobalProxy, ScriptGlobals } from "./internal/ScriptGlobals";
@@ -34,7 +36,8 @@ export class InlineScriptSandbox implements ScriptSandbox {
     readonly #validSyntax = new Set<string>();
     readonly #globalVars = new Map<string | symbol, unknown>();
     readonly #scriptVars = new Map<string, Map<string | symbol, unknown>>();
-    readonly #functionCallTimeout = 30000; // TODO: Make it configurable
+    readonly #functionCallTimeout = 5 * 60 * 1000; // 5 minutes. TODO: Make it configurable
+    readonly #yieldTimeout = 5 * 60 * 1000; // 5 minutes. TODO: Make it configurable
     #globalVersion = 0;
     #messageIdCounter = 0;
     #disposed = false;
@@ -94,7 +97,14 @@ export class InlineScriptSandbox implements ScriptSandbox {
         };
     }
 
-    async #call(key: string, idempotent: boolean, invocationId: string, args: ScriptValue[]): Promise<ScriptValue> {
+    async #call(
+        key: string,
+        idempotent: boolean,
+        invocationId: string,
+        args: ScriptValue[],
+        tracked?: Map<string, TrackedVariable>,
+    ): Promise<ScriptValue> {        
+        const written = getWrittenVars(tracked);
         const request: FunctionCallRequest = {
             type: "call",
             messageId: this.#nextMessageId(),
@@ -102,9 +112,24 @@ export class InlineScriptSandbox implements ScriptSandbox {
             args,
             idempotent,
             correlationId: invocationId,
+            written,
         };
         const { result } = await this.#request(request, isFunctionCallResponse, this.#functionCallTimeout);
         return result;
+    }
+
+    async #yield(
+        invocationId: string,
+        tracked?: Map<string, TrackedVariable>,
+    ): Promise<void> {        
+        const written = getWrittenVars(tracked);
+        const request: YieldRequest = {
+            type: "yield",
+            messageId: this.#nextMessageId(),
+            correlationId: invocationId,
+            written,
+        };
+        await this.#request(request, isYieldResponse, this.#yieldTimeout);
     }
 
     async #request<T extends GenericResponse>(
@@ -204,7 +229,7 @@ export class InlineScriptSandbox implements ScriptSandbox {
         invocationId: string,
         instanceId: string | null = null,
         idempotent = false,
-        tracked = new Map<string, TrackedVariable>(),
+        tracked?: Map<string, TrackedVariable>,
         vars?: Record<string, ScriptValue>,
     ): Promise<Pick<EvaluateScriptResponse, "result" | "refresh">> {
         const { 
@@ -242,29 +267,34 @@ export class InlineScriptSandbox implements ScriptSandbox {
     #createGlobalProxy(
         idempotent: boolean,
         invocationId: string,
-        tracked: Map<string, TrackedVariable>,
+        tracked: Map<string, TrackedVariable> | undefined,
         local?: Record<string, ScriptValue>,
     ): RootProxy<ScriptGlobals> {
         const funcs = new Map<string, (args: unknown[]) => unknown>();
         const onRead = (key: string): void => {
-            const variable = tracked.get(key) || {};
-            const { read = 0, ...rest } = variable;
-            tracked.set(key, { read: Math.max(read, this.#globalVersion), ...rest });
+            if (tracked) {
+                const variable = tracked.get(key) || {};
+                const { read = 0, ...rest } = variable;
+                tracked.set(key, { read: Math.max(read, this.#globalVersion), ...rest });
+            }
         };
         const onWrite = (key: string): void => {
-            const variable = tracked.get(key) || {};
-            const write = ++this.#globalVersion;
-            tracked.set(key, { ...variable, write });
+            if (tracked) {
+                const variable = tracked.get(key) || {};
+                const write = ++this.#globalVersion;
+                tracked.set(key, { ...variable, write });
+            }
         };
+        const yieldFunc = () => this.#yield(invocationId, tracked);
         if (this.#funcs) {
             for (const key of this.#funcs) {
                 const call = (...args: unknown[]): unknown => {
-                    return this.#call(key, idempotent, invocationId, args as ScriptValue[]);
+                    return this.#call(key, idempotent, invocationId, args as ScriptValue[], tracked);
                 };
                 funcs.set(key, call);
             }
         }
-        return createGlobalProxy(idempotent, funcs, this.#globalVars, onRead, onWrite, local);
+        return createGlobalProxy(idempotent, funcs, this.#globalVars, onRead, onWrite, yieldFunc, local);
     }
 
     #getInstanceVars(instanceId: string | null): Map<string | symbol, unknown> {
@@ -313,3 +343,15 @@ export class InlineScriptSandbox implements ScriptSandbox {
         return `sandbox-${++this.#messageIdCounter}`;
     }
 }
+
+const getWrittenVars = (tracked: Map<string, TrackedVariable> | undefined): Map<string, number> | undefined => {
+    if (tracked) {
+        const written = new Map<string, number>();
+        for (const [varName, varInfo] of tracked) {
+            if (typeof varInfo.write === "number") {
+                written.set(varName, varInfo.write);
+            }
+        }
+        return written;
+    }
+};

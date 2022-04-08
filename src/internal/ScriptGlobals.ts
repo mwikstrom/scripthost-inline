@@ -62,19 +62,21 @@ export function createGlobalProxy(
     globalVars: Map<string | symbol, unknown>,
     onRead: (key: string) => void,
     onWrite: (key: string) => void,
-    localVars: Record<string, ScriptValue> = {}
+    yieldFunc: () => Promise<void>,
+    localVars: Record<string, ScriptValue> = {},
 ): RootProxy<ScriptGlobals> {
-    const keys = () => [...Object.keys(FIXED), ...Object.keys(localVars), ...globalVars.keys(), ...funcs.keys()];
+    const fixedGlobals = createFixedGlobals(yieldFunc);
+    const keys = () => [...Object.keys(fixedGlobals), ...Object.keys(localVars), ...globalVars.keys(), ...funcs.keys()];
     const has = (key: string | symbol): boolean => {
-        if (typeof key === "string" && !(key in FIXED) && !(key in localVars) && !funcs.has(key)) {
+        if (typeof key === "string" && !(key in fixedGlobals) && !(key in localVars) && !funcs.has(key)) {
             onRead(key);
         }
         return true;
     };
     const read = (key: string | symbol): unknown => {
         if (typeof key === "string") {
-            if (key in FIXED) {
-                return getTransparentProxy(FIXED[key], root.proxy);
+            if (key in fixedGlobals) {
+                return getTransparentProxy(fixedGlobals[key], root.proxy);
             }
             if (key in localVars) {
                 return getTransparentProxy(localVars[key], root.proxy);
@@ -87,7 +89,7 @@ export function createGlobalProxy(
         return globalVars.get(key);
     };
     const write = (key: string | symbol, value: unknown): boolean => {
-        if (key in FIXED) {
+        if (key in fixedGlobals) {
             throw new Error(`Cannot assign fixed global variable '${String(key)}'`);
         }
         if (key in localVars) {
@@ -106,7 +108,7 @@ export function createGlobalProxy(
         return true;
     };
     const unset = (key: string | symbol): boolean => {
-        if (key in FIXED) {
+        if (key in fixedGlobals) {
             throw new Error(`Cannot delete fixed global variable '${String(key)}'`);
         }
         if (key in localVars) {
@@ -136,9 +138,7 @@ export function createGlobalProxy(
     return root;
 }
 
-const delay = (milliseconds = 0) => new Promise<void>(resolve => setTimeout(resolve, milliseconds));
-
-const FIXED: Readonly<ScriptGlobals> = Object.freeze({
+const createFixedGlobals = (yieldFunc: () => Promise<void>): Readonly<ScriptGlobals> => Object.freeze({
     Infinity,
     NaN,
     undefined,
@@ -187,5 +187,13 @@ const FIXED: Readonly<ScriptGlobals> = Object.freeze({
     DataView,
     JSON,
     Promise,
-    delay,
+    delay: async (milliseconds = 0) => {
+        const start = Date.now();
+        await yieldFunc();
+        const duration = Math.max(0, Date.now() - start);
+        milliseconds -= duration;
+        if (milliseconds > 0) {
+            await new Promise<void>(resolve => setTimeout(resolve, milliseconds));
+        }
+    },
 });
