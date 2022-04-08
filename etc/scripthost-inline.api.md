@@ -10,6 +10,9 @@ import { ScriptValue } from 'scripthost-core';
 // @public
 export class InlineScriptSandbox implements ScriptSandbox {
     // (undocumented)
+    get disableYield(): boolean;
+    set disableYield(value: boolean);
+    // (undocumented)
     dispose(): void;
     // (undocumented)
     listen(handler: (message: ScriptValue) => void): () => void;

@@ -42,6 +42,10 @@ export class InlineScriptSandbox implements ScriptSandbox {
     #messageIdCounter = 0;
     #disposed = false;
     #funcs: ReadonlySet<string> | null = null;
+    #disableYield = false;
+
+    get disableYield(): boolean { return this.#disableYield; }
+    set disableYield(value: boolean) { this.#disableYield = value; }
 
     dispose(): void {
         this.#disposed = true;
@@ -121,15 +125,17 @@ export class InlineScriptSandbox implements ScriptSandbox {
     async #yield(
         invocationId: string,
         tracked?: Map<string, TrackedVariable>,
-    ): Promise<void> {        
-        const written = getWrittenVars(tracked);
-        const request: YieldRequest = {
-            type: "yield",
-            messageId: this.#nextMessageId(),
-            correlationId: invocationId,
-            written,
-        };
-        await this.#request(request, isYieldResponse, this.#yieldTimeout);
+    ): Promise<void> {
+        if (!this.#disableYield) {
+            const written = getWrittenVars(tracked);
+            const request: YieldRequest = {
+                type: "yield",
+                messageId: this.#nextMessageId(),
+                correlationId: invocationId,
+                written,
+            };
+            await this.#request(request, isYieldResponse, this.#yieldTimeout);
+        }
     }
 
     async #request<T extends GenericResponse>(

@@ -187,12 +187,14 @@ describe("InlineScriptSandbox", () => {
 
     it("can delay expression", async () => {
         const sandbox = new InlineScriptSandbox();
+        sandbox.disableYield = true;
         const result = await evalScript(sandbox, "await delay(100) || 123");
         expect(result).toBe(123);
     });
 
     it("can delay script block", async () => {
         const sandbox = new InlineScriptSandbox();
+        sandbox.disableYield = true;
         const result = await evalScript(sandbox, "{ await delay(100); return 123; }");
         expect(result).toBe(123);
     });

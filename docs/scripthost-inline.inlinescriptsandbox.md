@@ -13,6 +13,12 @@ export declare class InlineScriptSandbox implements ScriptSandbox
 ```
 <b>Implements:</b> ScriptSandbox
 
+## Properties
+
+|  Property | Modifiers | Type | Description |
+|  --- | --- | --- | --- |
+|  [disableYield](./scripthost-inline.inlinescriptsandbox.disableyield.md) |  | boolean |  |
+
 ## Methods
 
 |  Method | Modifiers | Description |
