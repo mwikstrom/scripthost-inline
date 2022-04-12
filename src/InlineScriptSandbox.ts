@@ -197,27 +197,35 @@ export class InlineScriptSandbox implements ScriptSandbox {
     }
 
     async #handleEvalRequest(request: EvaluateScriptRequest): Promise<void> {
-        const { script, messageId, instanceId, idempotent, track, vars } = request;
-
+        const { script, messageId, instanceId = null, idempotent, track, vars } = request;
+        const instanceVars = this.#getInstanceVars(instanceId);
+        const tracked = track ? new Map<string, TrackedVariable>() : undefined;
+        let response: EvaluateScriptResponse | ErrorResponse;
         try {
-            const tracked = track ? new Map<string, TrackedVariable>() : undefined;
-            const response: EvaluateScriptResponse = {
-                ...await this.#runScript(script, messageId, instanceId, idempotent, tracked, vars),
+            const result = await this.#runScript(script, messageId, instanceVars, idempotent, tracked, vars);
+            response = {
                 type: "result",
                 messageId: this.#nextMessageId(),
                 inResponseTo: messageId,
-                vars: tracked,
-            };
-            this.#notify(response);
+                result,
+            };            
         } catch (err) {
-            const response: ErrorResponse = {
+            response = {
                 type: "error",
                 messageId: this.#nextMessageId(),
                 inResponseTo: messageId,
                 message: err instanceof Error ? err.message : "Unknown error",
             };
-            this.#notify(response);
         }
+
+        response.vars = tracked;        
+        
+        const refresh = instanceVars.get("refresh");
+        if (typeof refresh === "number") {
+            response.refresh = refresh;
+        }
+
+        this.#notify(response);
     }
 
     #notify(message: ScriptValue): void {
@@ -233,16 +241,15 @@ export class InlineScriptSandbox implements ScriptSandbox {
     async #runScript(
         script: string,
         invocationId: string,
-        instanceId: string | null = null,
+        instanceVars: Map<string | symbol, unknown>,
         idempotent = false,
         tracked?: Map<string, TrackedVariable>,
         vars?: Record<string, ScriptValue>,
-    ): Promise<Pick<EvaluateScriptResponse, "result" | "refresh">> {
+    ): Promise<ScriptValue> {
         const { 
             proxy: globals,
             revoke: revokeGlobals ,
         } = this.#createGlobalProxy(idempotent, invocationId, tracked, vars);
-        const instanceVars = this.#getInstanceVars(instanceId);
         const { 
             proxy: thisArg, 
             revoke: revokeThis
@@ -257,13 +264,7 @@ export class InlineScriptSandbox implements ScriptSandbox {
                 throw new Error(`Invocation ID '${invocationId}' is already active'`);
             }
             this.#activeInvocations.set(invocationId, revoke);
-            const result = await compiled.call(thisArg, globals);
-            const refresh = instanceVars.get("refresh");
-            if (typeof refresh === "number" && refresh > 0) {
-                return { result, refresh };
-            } else {
-                return { result};
-            }
+            return await compiled.call(thisArg, globals);
         } finally {
             revoke();
             this.#activeInvocations.delete(invocationId);
