@@ -21,6 +21,7 @@ import {
     TrackedVariable,
     YieldRequest
 } from "scripthost-core";
+import { gracefulClone } from "./internal/GracefulClone";
 import { RootProxy } from "./internal/RootProxy";
 import { createGlobalProxy, ScriptGlobals } from "./internal/ScriptGlobals";
 import { createThisProxy, ScriptThisArg } from "./internal/ScriptThisArg";
@@ -108,12 +109,13 @@ export class InlineScriptSandbox implements ScriptSandbox {
         args: ScriptValue[],
         tracked?: Map<string, TrackedVariable>,
     ): Promise<ScriptValue> {        
+        const clonedArgs = await Promise.all(args.map(gracefulClone));
         const written = getWrittenVars(tracked);
         const request: FunctionCallRequest = {
             type: "call",
             messageId: this.#nextMessageId(),
             key,
-            args,
+            args: clonedArgs,
             idempotent,
             correlationId: invocationId,
             written,
@@ -202,7 +204,8 @@ export class InlineScriptSandbox implements ScriptSandbox {
         const tracked = track ? new Map<string, TrackedVariable>() : undefined;
         let response: EvaluateScriptResponse | ErrorResponse;
         try {
-            const result = await this.#runScript(script, messageId, instanceVars, idempotent, tracked, vars);
+            const raw = await this.#runScript(script, messageId, instanceVars, idempotent, tracked, vars);
+            const result = await gracefulClone(raw);
             response = {
                 type: "result",
                 messageId: this.#nextMessageId(),
@@ -229,12 +232,21 @@ export class InlineScriptSandbox implements ScriptSandbox {
     }
 
     #notify(message: ScriptValue): void {
+        let firstError: unknown;
+        let anySuccessful = false;
         for (const handler of this.#listeners) {
             try {
                 handler(message);
+                anySuccessful = true;
             } catch (e) {
+                if (firstError === undefined) {
+                    firstError = e;
+                }
                 console.warn("Sandbox listener threw exception:", e);
             }
+        }
+        if (!anySuccessful && firstError !== undefined) {
+            throw firstError;
         }
     }
 
