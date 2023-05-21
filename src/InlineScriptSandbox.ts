@@ -43,6 +43,7 @@ export class InlineScriptSandbox implements ScriptSandbox {
     #messageIdCounter = 0;
     #disposed = false;
     #funcs: ReadonlySet<string> | null = null;
+    #readOnlyGlobals = false;
     #disableYield = false;
 
     get disableYield(): boolean { return this.#disableYield; }
@@ -177,10 +178,11 @@ export class InlineScriptSandbox implements ScriptSandbox {
     }
 
     #handleInitRequest(request: InitializeRequest): void {
-        const { messageId, funcs } = request;
+        const { messageId, funcs, readOnlyGlobals } = request;
 
         if (this.#funcs === null) {
             this.#funcs = Object.freeze(new Set(funcs));
+            this.#readOnlyGlobals = Boolean(readOnlyGlobals);
             const response: InitializeResponse = {
                 type: "ready",
                 messageId: this.#nextMessageId(),
@@ -313,7 +315,8 @@ export class InlineScriptSandbox implements ScriptSandbox {
                 funcs.set(key, call);
             }
         }
-        return createGlobalProxy(idempotent, funcs, this.#globalVars, onRead, onWrite, yieldFunc, local);
+        const readOnly = this.#readOnlyGlobals || idempotent;
+        return createGlobalProxy(readOnly, funcs, this.#globalVars, onRead, onWrite, yieldFunc, local);
     }
 
     #getInstanceVars(instanceId: string | null): Map<string | symbol, unknown> {

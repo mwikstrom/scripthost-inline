@@ -57,7 +57,7 @@ export interface ScriptGlobals extends Record<string | symbol, unknown> {
 
 /** @internal */
 export function createGlobalProxy(
-    idempotent: boolean,
+    readOnly: boolean,
     funcs: ReadonlyMap<string, (args: unknown[]) => unknown>,
     globalVars: Map<string | symbol, unknown>,
     onRead: (key: string) => void,
@@ -98,8 +98,8 @@ export function createGlobalProxy(
         if (typeof key === "string" && funcs.has(key)) {
             throw new Error(`Cannot replace host function '${String(key)}'`);
         }
-        if (idempotent) {
-            throw new Error(`Idempotent script cannot assign global variable '${String(key)}'`);
+        if (readOnly) {
+            throw new Error(`Cannot assign read-only global variable '${String(key)}'`);
         }
         if (typeof key === "string") {
             onWrite(key);
@@ -117,8 +117,8 @@ export function createGlobalProxy(
         if (typeof key === "string" && funcs.has(key)) {
             throw new Error(`Cannot delete host function '${String(key)}'`);
         }
-        if (idempotent) {
-            throw new Error(`Idempotent script cannot delete global variable '${String(key)}'`);
+        if (readOnly) {
+            throw new Error(`Cannot delete read-only global variable '${String(key)}'`);
         }
         if (typeof key === "string") {
             onWrite(key);

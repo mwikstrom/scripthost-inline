@@ -175,7 +175,7 @@ describe("InlineScriptSandbox", () => {
     it("cannot assign global variable in idempotent script", async () => {
         const sandbox = new InlineScriptSandbox();
         await expect(() => evalScript(sandbox, "value = 123", { idempotent: true })).rejects.toThrow(
-            "Idempotent script cannot assign global variable 'value'"
+            "Cannot assign read-only global variable 'value'"
         );
     });
 
