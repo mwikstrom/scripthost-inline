@@ -13,6 +13,12 @@ export declare class InlineScriptSandbox implements ScriptSandbox
 ```
 <b>Implements:</b> ScriptSandbox
 
+## Constructors
+
+|  Constructor | Modifiers | Description |
+|  --- | --- | --- |
+|  [(constructor)(options)](./scripthost-inline.inlinescriptsandbox._constructor_.md) |  | Constructs a new instance of the <code>InlineScriptSandbox</code> class |
+
 ## Properties
 
 |  Property | Modifiers | Type | Description |

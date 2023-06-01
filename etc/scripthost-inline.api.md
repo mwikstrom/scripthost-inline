@@ -9,6 +9,7 @@ import { ScriptValue } from 'scripthost-core';
 
 // @public
 export class InlineScriptSandbox implements ScriptSandbox {
+    constructor(options?: Partial<InlineScriptSandboxOptions>);
     // (undocumented)
     get disableYield(): boolean;
     set disableYield(value: boolean);
@@ -18,6 +19,12 @@ export class InlineScriptSandbox implements ScriptSandbox {
     listen(handler: (message: ScriptValue) => void): () => void;
     // (undocumented)
     post(message: ScriptValue): void;
+}
+
+// @public (undocumented)
+export interface InlineScriptSandboxOptions {
+    // (undocumented)
+    messageIdPrefix: string;
 }
 
 ```

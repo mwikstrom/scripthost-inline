@@ -27,10 +27,18 @@ import { createGlobalProxy, ScriptGlobals } from "./internal/ScriptGlobals";
 import { createThisProxy, ScriptThisArg } from "./internal/ScriptThisArg";
 
 /**
+ * @public
+ */
+export interface InlineScriptSandboxOptions {
+    messageIdPrefix: string;
+}
+
+/**
  * A script sandbox that runs code inside the current VM
  * @public
  */
 export class InlineScriptSandbox implements ScriptSandbox {
+    readonly #messageIdPrefix: string;
     readonly #listeners = new Set<(message: ScriptValue) => void>();
     readonly #responseHandlers = new Map<string, (response: GenericResponse) => void>();
     readonly #activeInvocations = new Map<string, (this: void) => void>();
@@ -45,6 +53,11 @@ export class InlineScriptSandbox implements ScriptSandbox {
     #funcs: ReadonlySet<string> | null = null;
     #readOnlyGlobals = false;
     #disableYield = false;
+
+    constructor(options: Partial<InlineScriptSandboxOptions> = {}) {
+        const { messageIdPrefix = "sandbox-" } = options;
+        this.#messageIdPrefix = messageIdPrefix;
+    }
 
     get disableYield(): boolean { return this.#disableYield; }
     set disableYield(value: boolean) { this.#disableYield = value; }
@@ -362,7 +375,7 @@ export class InlineScriptSandbox implements ScriptSandbox {
     }
     
     #nextMessageId(): string {
-        return `sandbox-${++this.#messageIdCounter}`;
+        return `${this.#messageIdPrefix}${++this.#messageIdCounter}`;
     }
 }
 

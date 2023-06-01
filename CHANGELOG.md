@@ -1,3 +1,7 @@
+## 1.3.0 - 2023-06-02
+
+- New feature: Customizable message id prefix
+
 ## 1.2.0 - 2023-05-22
 
 - New feature: Read-only globals

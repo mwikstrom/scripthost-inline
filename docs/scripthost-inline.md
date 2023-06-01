@@ -12,3 +12,9 @@ Sandboxed and observable Javascript host that runs inside the default VM
 |  --- | --- |
 |  [InlineScriptSandbox](./scripthost-inline.inlinescriptsandbox.md) | A script sandbox that runs code inside the current VM |
 
+## Interfaces
+
+|  Interface | Description |
+|  --- | --- |
+|  [InlineScriptSandboxOptions](./scripthost-inline.inlinescriptsandboxoptions.md) |  |
+
